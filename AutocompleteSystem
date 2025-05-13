@@ -1,0 +1,79 @@
+import java.util.*;
+
+class AutocompleteSystem {
+    class TrieNode {
+        Map<Character, TrieNode> children = new HashMap<>();
+        Map<String, Integer> sentenceFrequency = new HashMap<>();
+    }
+
+    private TrieNode root;
+    private StringBuilder currentInput;
+    private TrieNode currentNode;
+
+    public AutocompleteSystem(String[] sentences, int[] times) {
+        root = new TrieNode();
+        currentInput = new StringBuilder();
+        currentNode = root;
+
+        for (int i = 0; i < sentences.length; i++) {
+            insertSentence(sentences[i], times[i]);
+        }
+    }
+
+    private void insertSentence(String sentence, int time) {
+        TrieNode node = root;
+        for (char ch : sentence.toCharArray()) {
+            node.children.putIfAbsent(ch, new TrieNode());
+            node = node.children.get(ch);
+            node.sentenceFrequency.put(sentence, node.sentenceFrequency.getOrDefault(sentence, 0) + time);
+        }
+    }
+
+    public List<String> input(char c) {
+        if (c == '#') {
+            String inputSentence = currentInput.toString();
+            insertSentence(inputSentence, 1);
+            currentInput.setLength(0);
+            currentNode = root;
+            return new ArrayList<>();
+        }
+
+        currentInput.append(c);
+        if (currentNode == null || !currentNode.children.containsKey(c)) {
+            currentNode = null;
+            return new ArrayList<>();
+        }
+
+        currentNode = currentNode.children.get(c);
+        return getTopKSentences(currentNode, 3);
+    }
+
+    private List<String> getTopKSentences(TrieNode node, int k) {
+        PriorityQueue<Map.Entry<String, Integer>> pq = new PriorityQueue<>(
+            (a, b) -> a.getValue() == b.getValue() ?
+                      a.getKey().compareTo(b.getKey()) :
+                      b.getValue() - a.getValue()
+        );
+        pq.addAll(node.sentenceFrequency.entrySet());
+
+        List<String> result = new ArrayList<>();
+        while (!pq.isEmpty() && result.size() < k) {
+            result.add(pq.poll().getKey());
+        }
+
+        return result;
+    }
+
+    // For demonstration
+    public static void main(String[] args) {
+        String[] sentences = {"i love you", "island", "ironman", "i love leetcode"};
+        int[] times = {5, 3, 2, 2};
+
+        AutocompleteSystem system = new AutocompleteSystem(sentences, times);
+
+        System.out.println(system.input('i'));  // ["i love you", "i love leetcode", "island"]
+        System.out.println(system.input(' '));  // ["i love you", "i love leetcode"]
+        System.out.println(system.input('a'));  // []
+        System.out.println(system.input('#'));  // End of sentence input
+    }
+}
